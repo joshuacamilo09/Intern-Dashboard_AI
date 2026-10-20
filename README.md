@@ -1,5 +1,5 @@
 ## Internal Analytics Platform for SMEs  
-**Tech Stack:** Java · Spring Boot · PostgreSQL · AI/ML  
+**Tech Stack:** Typescript | React | Postgresql
 
 - Designed and developed a scalable **full-stack analytics platform** tailored for small and medium-sized enterprises (SMEs), enabling data-driven decision-making through an intuitive business intelligence dashboard.
 
