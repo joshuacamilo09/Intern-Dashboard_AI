@@ -1,0 +1,185 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// --- ENUMS ---
+
+enum UserRole {
+  ADMIN
+  MANAGER
+  VIEWER
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum CustomerStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum ProductStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum OrderStatus {
+  PENDING
+  PAID
+  CANCELED
+  REFUNDED
+}
+
+// --- MODELOS ---
+
+model Company {
+  id        String   @id @default(uuid())
+  name      String
+  slug      String   @unique
+  status    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  users         User[]
+  customers     Customer[]
+  products      Product[]
+  orders        Order[]
+  activityLogs  ActivityLog[]
+}
+
+model User {
+  id        String     @id @default(uuid())
+  name      String
+  email     String     @unique
+  password  String
+  hashedRt  String?
+  role      UserRole   @default(ADMIN)
+  status    UserStatus @default(ACTIVE)
+  
+  companyId String
+  company   Company    @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  passwordResets PasswordReset[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("user") // Mantém o nome da tabela em minúsculo no banco se desejar
+}
+
+model Customer {
+  id        String         @id @default(uuid())
+  name      String
+  email     String          
+  phone     String?
+  status    CustomerStatus @default(ACTIVE)
+
+  companyId String
+  company   Company        @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  orders    Order[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Essencial para Multi-tenancy: impede emails duplicados na MESMA empresa
+  // E permite que a Order valide se o cliente pertence à empresa correta
+  @@unique([email, companyId])
+  @@unique([id, companyId]) 
+  
+  @@index([status])
+  @@index([companyId])
+}
+
+model Product {
+  id        String        @id @default(uuid())
+  name      String
+  category  String
+  price     Decimal       @db.Decimal(10, 2)
+  cost      Decimal?      @db.Decimal(10, 2)
+  status    ProductStatus @default(ACTIVE)
+  stock     Int           @default(0)
+
+  companyId String
+  company   Company       @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  orderItems OrderItem[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([category])
+  @@index([status])
+  @@index([companyId])
+}
+
+model Order {
+  id            String       @id @default(uuid())
+  status        OrderStatus  @default(PENDING)
+  totalAmount   Decimal      @db.Decimal(10, 2)
+
+  companyId     String
+  company       Company      @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  customerId    String
+  // Chave Composta: Garante que você nunca crie um pedido para a Empresa A com um cliente da Empresa B
+  customer      Customer     @relation(fields: [customerId, companyId], references: [id, companyId])
+
+  items         OrderItem[]
+
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  @@index([status])
+  @@index([companyId, createdAt]) // Otimiza drasticamente as queries de Analytics
+}
+
+model OrderItem {
+  id           String   @id @default(uuid())
+  orderId      String
+  productId    String
+
+  quantity     Int
+  priceAtSale  Decimal  @db.Decimal(10, 2)
+
+  order        Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product      Product  @relation(fields: [productId], references: [id])
+
+  @@index([orderId])
+  @@index([productId])
+}
+
+model ActivityLog {
+  id        String   @id @default(uuid())
+  action    String
+  entity    String
+  entityId  String
+  metadata  Json?
+  
+  companyId String
+  company   Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@index([entity])
+  @@index([companyId])
+}
+
+model PasswordReset {
+  id        String   @id @default(uuid())
+  userId    String   
+  email     String
+  token     String   @unique
+  expiresAt DateTime 
+  createdAt DateTime @default(now())
+  
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([token])
+}

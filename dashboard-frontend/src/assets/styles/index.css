@@ -1,0 +1,18 @@
+@import "tailwindcss";
+
+@layer base {
+  body {
+    @apply bg-[#13131A] text-white antialiased;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  }
+}
+  /* Scrollbar personalizada para condizer com o Dark Mode */
+  ::-webkit-scrollbar {
+    width: 8px;
+  }
+  ::-webkit-scrollbar-track {
+    @apply bg-[#13131A];
+  }
+  ::-webkit-scrollbar-thumb {
+    @apply bg-[#2D2D3F] rounded-full hover:bg-[#3E3E55];
+  }
