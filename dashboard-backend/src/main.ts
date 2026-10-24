@@ -2,7 +2,6 @@ import 'dotenv/config';
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import cookieParser from 'cookie-parser';
-import { doubleCsrf } from 'csrf-csrf';
 import { WinstonModule } from 'nest-winston';
 import * as winston from 'winston';
 import { ConfigService } from '@nestjs/config';
@@ -84,42 +83,9 @@ async function bootstrap() {
     SwaggerModule.setup('docs', app, document);
   }
 
-  // CSRF
-  const csrfSecret = configService.get<string>('CSRF_SECRET');
-
-  const { doubleCsrfProtection } = doubleCsrf({
-    getSecret: () => csrfSecret!,
-    getSessionIdentifier: (req) => req.cookies['refresh_token'],
-    cookieOptions: {
-      httpOnly: true,
-      sameSite: 'none',
-      secure: true,
-    },
-    ignoredMethods: ['GET', 'HEAD', 'OPTIONS'],
-  });
-
-  app.use((req, res, next) => {
-
-    const ignoredPaths = [
-      '/docs',
-      '/auth',
-      '/auth/login',
-      '/auth/signup',
-      '/auth/forgot-password',
-      '/auth/reset-password',
-      '/auth/refresh',
-      '/orders',
-      '/analytics',
-      '/product',
-      '/customer',
-      '/users',
-      '/ai',
-    ];
-    if (ignoredPaths.some((path) => req.path.startsWith(path))) return next();
-
-    if (req.path.startsWith('/docs') || req.path.startsWith('/auth')) return next();
-    return doubleCsrfProtection(req, res, next);
-  });
+  // CSRF: a API autentica com Bearer token (header Authorization), que o browser não envia
+  // sozinho; o único cookie é o refresh token, HttpOnly + SameSite=Lax, que não é enviado em
+  // pedidos POST cross-site. Por isso não é preciso um middleware de CSRF adicional.
 
   const port = configService.get<number>('PORT') || 3000;
   await app.listen(port, '0.0.0.0');

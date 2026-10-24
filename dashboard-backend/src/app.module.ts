@@ -11,10 +11,14 @@ import { AnalyticsModule } from './analytics/analytics.module';
 import { ConfigModule, ConfigService } from '@nestjs/config'; // Adicione ConfigService
 import { MailerModule } from '@nestjs-modules/mailer';
 import { AiModule } from './ai/ai.module';
+import { APP_GUARD } from '@nestjs/core';
+import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
+    // Rate limiting global (por IP); as rotas de auth têm limites mais apertados via @Throttle
+    ThrottlerModule.forRoot([{ ttl: 60_000, limit: 300 }]),
     // Configuração Dinâmica do Mailer
     MailerModule.forRootAsync({
       imports: [ConfigModule],
@@ -47,6 +51,6 @@ import { AiModule } from './ai/ai.module';
     AiModule,
   ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [AppService, { provide: APP_GUARD, useClass: ThrottlerGuard }],
 })
 export class AppModule {}
